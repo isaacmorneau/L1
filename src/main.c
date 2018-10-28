@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "addr.h"
+
 static void print_help() {
     puts("==>target<==\n"
          "\t[s]rcip  - the IP of the target to poison\n"
@@ -11,7 +13,7 @@ static void print_help() {
          "specifying MAC will disable the discovery from the network\n"
          "one or the other is needed but not both\n"
          "\n==>injection<==\n"
-         "\t[d]stip  - the IP of the crafted dns query, will default to localip\n"
+         "\t[d]stip  - the IP of the crafted dns query, will default to local IP\n"
          "\th[o]stip - the host of the crafted dns query, will be looked up and used in place of a "
          "raw ip\n"
          "one or the other is needed but not both\n"
@@ -74,6 +76,23 @@ int main(int argc, char **argv) {
         fputs("cannot specify both host and IP of target\n", stderr);
         return EXIT_FAILURE;
     }
+
+    uint32_t ip;
+    uint8_t mac[6];
+
+    if (resolve_ip(host, srcip, &ip)) {
+        fputs("unable to resolve IP\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (resolve_local_mac(mac)) {
+        fputs("unable to resolve MAC\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    print_ip(ip);
+
+    print_mac(mac);
 
     return EXIT_SUCCESS;
 }
