@@ -34,6 +34,7 @@ int resolve_ip(char* host, char* ip, uint32_t* addr) {
         }
 
         if (rp->ai_family != AF_INET) {
+            fputs("IPv6 not supported\n", stderr);
             //only can do ipv4 right now
             return -1;
         }
@@ -46,6 +47,7 @@ int resolve_ip(char* host, char* ip, uint32_t* addr) {
         }
         *addr = inaddr.s_addr;
     } else {
+        fputs("host and ip unspecified\n", stderr);
         return -1;
     }
     return 0;
@@ -72,7 +74,7 @@ int resolve_local_mac(uint8_t mac[6]) {
     const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
 
     for (struct ifreq ifr; it != end; ++it) {
-        strncpy(ifr.ifr_name, it->ifr_name, sizeof(it->ifr_name));
+        strncpy(ifr.ifr_name, it->ifr_name, sizeof(ifr.ifr_name));
         if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
             if (!(ifr.ifr_flags & IFF_LOOPBACK)) {
                 if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {

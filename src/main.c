@@ -25,10 +25,10 @@ int main(int argc, char **argv) {
     int choice;
     int option_index = 0;
 
-    char *srcip = NULL;
-    char *dstip = NULL;
-    char *host  = NULL;
-    char *mac   = NULL;
+    char *srcip  = NULL;
+    char *dstip  = NULL;
+    char *host   = NULL;
+    char *srcmac = NULL;
 
     if (argc == 1) {
         print_help();
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
             {"dstip", required_argument, 0, 'd'}, {"hostip", required_argument, 0, 'o'},
             {"mac", required_argument, 0, 'm'}, {"help", no_argument, 0, 'h'}, {0, 0, 0, 0}};
 
-        choice = getopt_long(argc, argv, "sdmh", long_options, &option_index);
+        choice = getopt_long(argc, argv, "s:m:d:o:h", long_options, &option_index);
 
         if (choice == -1)
             break;
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
                 host = optarg;
                 break;
             case 'm':
-                mac = optarg;
+                srcmac = optarg;
                 break;
             default:
                 print_help();
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (srcip && mac) {
+    if (srcip && srcmac) {
         fputs("cannot specify both MAC and IP of target\n", stderr);
         return EXIT_FAILURE;
     }
