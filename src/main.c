@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     uint8_t umac[6], pmac[6], gmac[6];
 
     if (resolve_ip(psnip, &pip)) {
-        fputs("unable to resolve source IP\n", stderr);
+        fputs("unable to resolve poison IP\n", stderr);
         return EXIT_FAILURE;
     }
 
