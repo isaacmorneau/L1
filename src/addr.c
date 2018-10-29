@@ -85,19 +85,20 @@ void print_ip(uint32_t addr) {
     printf("IP: %u.%u.%u.%u\n", *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2),
         *((uint8_t*)&addr + 3));
 }
+
 void print_mac(uint8_t mac[6]) {
     printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 int resolve_remote_mac(uint32_t addr, uint8_t mac[6]) {
-    char buffer[17];
+    char buffer[18];
     //this is more than needed but i cant be asked to count it
     char command[256];
     snprintf(command, 256,
         "export H=\"%u.%u.%u.%u\";ping -nc1 $H 2>&1 >/dev/null;arp -an|grep $H|awk '{print $4}'",
         *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2), *((uint8_t*)&addr + 3));
     FILE* macfile = popen(command, "r");
-    fgets(buffer, 17, macfile);
+    fgets(buffer, 18, macfile);
     pclose(macfile);
     if (sscanf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac, mac + 1, mac + 2, mac + 3,
             mac + 4, mac + 5)

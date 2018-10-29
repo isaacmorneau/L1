@@ -126,6 +126,7 @@ int main(int argc, char **argv) {
 
     puts("==-gateway-==");
     print_ip(gip);
+    print_mac(gmac);
 
     return EXIT_SUCCESS;
 }
