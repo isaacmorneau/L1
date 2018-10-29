@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    uint32_t pip, dip, gip;
+    uint32_t pip, uip, dip, gip;
     uint8_t umac[6], pmac[6], gmac[6];
 
     if (resolve_ip(psnip, &pip)) {
@@ -104,6 +104,11 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    if (resolve_local_ip(umac, &uip)) {
+        fputs("unable to resolve local IP\n", stderr);
+        return EXIT_FAILURE;
+    }
+
     if (resolve_remote_mac(pip, pmac)) {
         fputs("unable to resolve remote MAC\n", stderr);
         return EXIT_FAILURE;
@@ -122,6 +127,7 @@ int main(int argc, char **argv) {
     print_ip(dip);
 
     puts("==-us-==");
+    print_ip(uip);
     print_mac(umac);
 
     puts("==-gateway-==");
