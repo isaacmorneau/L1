@@ -11,7 +11,6 @@ static void print_help() {
          "\t[s]rcip  - the IP of the target to poison\n"
          "\t[m]ac    - the MAC address of the target\n"
          "specifying MAC will disable the discovery from the network\n"
-         "one or the other is needed but not both\n"
          "\n==>injection<==\n"
          "\t[d]stip  - the IP of the crafted dns query, will default to local IP\n"
          "\th[o]stip - the host of the crafted dns query, will be looked up and used in place of a "
@@ -67,32 +66,49 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (srcip && srcmac) {
-        fputs("cannot specify both MAC and IP of target\n", stderr);
-        return EXIT_FAILURE;
-    }
-
     if (host && dstip) {
         fputs("cannot specify both host and IP of target\n", stderr);
         return EXIT_FAILURE;
     }
 
-    uint32_t ip;
-    uint8_t mac[6];
+    if (!(srcip && (host || dstip))) {
+        print_help();
+        return EXIT_FAILURE;
+    }
 
-    if (resolve_ip(host, srcip, &ip)) {
+    uint32_t sip, dip;
+    uint8_t usmac[6], pmac[6];
+
+    if (resolve_ip(srcip, &sip)) {
         fputs("unable to resolve IP\n", stderr);
         return EXIT_FAILURE;
     }
 
-    if (resolve_local_mac(mac)) {
-        fputs("unable to resolve MAC\n", stderr);
+    if (resolve_ip(dstip ? dstip : host, &dip)) {
+        fputs("unable to resolve IP\n", stderr);
         return EXIT_FAILURE;
     }
 
-    print_ip(ip);
+    if (resolve_local_mac(usmac)) {
+        fputs("unable to resolve local MAC\n", stderr);
+        return EXIT_FAILURE;
+    }
 
-    print_mac(mac);
+    if (resolve_remote_mac(srcmac, sip, pmac)) {
+        fputs("unable to resolve remote MAC\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    puts("poison:");
+    print_ip(sip);
+
+    print_mac(pmac);
+
+    puts("redirect to:");
+    print_ip(dip);
+
+    puts("us:");
+    print_mac(usmac);
 
     return EXIT_SUCCESS;
 }
