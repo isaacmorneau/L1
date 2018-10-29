@@ -89,27 +89,31 @@ void print_mac(uint8_t mac[6]) {
     printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-int resolve_remote_mac(char* srcmac, uint32_t addr, uint8_t mac[6]) {
+int resolve_remote_mac(uint32_t addr, uint8_t mac[6]) {
     char buffer[17];
-    if (!srcmac) {
-        //if no mac was specifed use some quick commandline magic to get it
-        srcmac = buffer;
-        //this is more than needed but i cant be asked to count it
-        char command[256];
-        snprintf(command, 256,
-            "export H=\"%u.%u.%u.%u\";ping -nc1 $H 2>&1 >/dev/null;arp -an|grep $H|awk '{print "
-            "$4}'",
-            *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2),
-            *((uint8_t*)&addr + 3));
-        FILE* macfile = popen(command, "r");
-        fgets(buffer, 17, macfile);
-        pclose(macfile);
-    }
-
-    if (sscanf(srcmac, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac, mac + 1, mac + 2, mac + 3, mac + 4,
-            mac + 5)
+    //this is more than needed but i cant be asked to count it
+    char command[256];
+    snprintf(command, 256,
+        "export H=\"%u.%u.%u.%u\";ping -nc1 $H 2>&1 >/dev/null;arp -an|grep $H|awk '{print $4}'",
+        *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2), *((uint8_t*)&addr + 3));
+    FILE* macfile = popen(command, "r");
+    fgets(buffer, 17, macfile);
+    pclose(macfile);
+    if (sscanf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac, mac + 1, mac + 2, mac + 3,
+            mac + 4, mac + 5)
         == 6) {
         return 0;
     }
     return 1;
+}
+
+int resolve_gateway(uint32_t* addr) {
+    FILE* ipfile = popen("ip route|grep default|awk '{print $3}'", "r");
+    uint8_t ip[4];
+    int ret = fscanf(ipfile, "%hhu.%hhu.%hhu.%hhu", ip, ip + 1, ip + 2, ip + 3);
+    pclose(ipfile);
+
+    *addr = *ip | ip[1] << 8 | ip[2] << 16 | ip[3] << 24;
+
+    return ret == 4 ? 0 : -1;
 }
