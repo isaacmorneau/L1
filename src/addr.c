@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "addr.h"
 #include "poison.h"
@@ -39,47 +40,30 @@ int resolve_ip(char* host, uint32_t* addr) {
         freeaddrinfo(rp);
         return -1;
     }
+
     *addr = ((struct sockaddr_in*)rp->ai_addr)->sin_addr.s_addr;
     freeaddrinfo(rp);
     return 0;
 }
 
-int resolve_local_mac(uint8_t mac[6]) {
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (sock == -1) {
-        perror("socket");
-        return -1;
-    };
+int resolve_local_mac(const char* iface, uint8_t mac[6]) {
+    int fd;
+    struct ifreq ifr;
+    ifr.ifr_addr.sa_family = AF_INET;
+    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
 
-    struct ifconf ifc;
-    char buf[1024];
-    ifc.ifc_len = sizeof(buf);
-    ifc.ifc_buf = buf;
-    if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) {
-        perror("ioctl");
+    if ((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1) {
         return -1;
     }
 
-    struct ifreq* it = ifc.ifc_req;
-
-    const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
-
-    for (struct ifreq ifr; it != end; ++it) {
-        strncpy(ifr.ifr_name, it->ifr_name, sizeof(ifr.ifr_name));
-        if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
-            if (!(ifr.ifr_flags & IFF_LOOPBACK)) {
-                if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
-                    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
-                    return 0;
-                }
-            }
-        } else {
-            perror("ioctl");
-            return -1;
-        }
+    if ((ioctl(fd, SIOCGIFHWADDR, &ifr)) == -1) {
+        return -1;
     }
 
-    return -1;
+    close(fd);
+
+    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+    return 0;
 }
 
 void print_ip(uint32_t addr) {
@@ -138,11 +122,11 @@ int resolve_local_ip(uint8_t mac[6], uint32_t* addr) {
         "$2}'|grep -Eo '^[^/]*'",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-    if (!(ipfile = popen(buffer, "r"))){
+    if (!(ipfile = popen(buffer, "r"))) {
         perror("popen");
         return -1;
     }
-    ret    = fscanf(ipfile, "%hhu.%hhu.%hhu.%hhu", ip, ip + 1, ip + 2, ip + 3);
+    ret = fscanf(ipfile, "%hhu.%hhu.%hhu.%hhu", ip, ip + 1, ip + 2, ip + 3);
 
     pclose(ipfile);
 

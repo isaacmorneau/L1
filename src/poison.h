@@ -13,4 +13,6 @@ typedef struct {
 
 #define IF_INDEX (2)
 
+int peep_sock(const char * iface);
+
 void* zerg_arp(void* targets);

