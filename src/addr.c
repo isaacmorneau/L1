@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include "addr.h"
+#include "poison.h"
 
 int resolve_ip(char* host, uint32_t* addr) {
     struct addrinfo hints;

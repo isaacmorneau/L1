@@ -26,6 +26,7 @@ include_directories(src deps/wrappers)
 SET(SOURCES
     "src/addr.c"
     "src/filter.c"
+    "src/poison.c"
     "src/main.c"
     )
 
