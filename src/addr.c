@@ -13,6 +13,21 @@
 #include "addr.h"
 #include "poison.h"
 
+int read_mac_str(const char* macstr, uint8_t mac[6]) {
+    return (sscanf(macstr, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac, mac + 1, mac + 2,
+                mac + 3, mac + 4, mac + 5)
+        != 6);
+}
+
+void print_ip(uint32_t addr) {
+    printf("IP: %u.%u.%u.%u\n", *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2),
+        *((uint8_t*)&addr + 3));
+}
+
+void print_mac(uint8_t mac[6]) {
+    printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 int resolve_ip(char* host, uint32_t* addr) {
     struct addrinfo hints;
     struct addrinfo* rp;
@@ -66,15 +81,6 @@ int resolve_local_mac(const char* iface, uint8_t mac[6]) {
     return 0;
 }
 
-void print_ip(uint32_t addr) {
-    printf("IP: %u.%u.%u.%u\n", *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2),
-        *((uint8_t*)&addr + 3));
-}
-
-void print_mac(uint8_t mac[6]) {
-    printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
 int resolve_remote_mac(uint32_t addr, uint8_t mac[6]) {
     char buffer[90];
     snprintf(buffer, 90,
@@ -87,12 +93,7 @@ int resolve_remote_mac(uint32_t addr, uint8_t mac[6]) {
     }
     fgets(buffer, 18, macfile);
     pclose(macfile);
-    if (sscanf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac, mac + 1, mac + 2, mac + 3,
-            mac + 4, mac + 5)
-        == 6) {
-        return 0;
-    }
-    return 1;
+    return read_mac_str(buffer, mac);
 }
 
 int resolve_gateway(uint32_t* addr) {
