@@ -113,12 +113,12 @@ void* zerg_arp(void* targets) {
     memcpy(gea->arp_tpa, &t.gip, 4);
 
     caddr.sll_family   = AF_PACKET;
-    caddr.sll_ifindex  = IF_INDEX;
+    caddr.sll_ifindex  = t.ifindex;
     caddr.sll_halen    = ETHER_ADDR_LEN;
     caddr.sll_protocol = htons(ETH_P_ARP);
 
     gaddr.sll_family   = AF_PACKET;
-    gaddr.sll_ifindex  = IF_INDEX;
+    gaddr.sll_ifindex  = t.ifindex;
     gaddr.sll_halen    = ETHER_ADDR_LEN;
     gaddr.sll_protocol = htons(ETH_P_ARP);
 

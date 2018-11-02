@@ -61,7 +61,7 @@ int resolve_ip(char* host, uint32_t* addr) {
     return 0;
 }
 
-int resolve_local_mac(const char* iface, uint8_t mac[6]) {
+int resolve_local_mac(const char* iface, uint8_t mac[6], int* ifindex) {
     int fd;
     struct ifreq ifr;
     ifr.ifr_addr.sa_family = AF_INET;
@@ -74,6 +74,12 @@ int resolve_local_mac(const char* iface, uint8_t mac[6]) {
     if ((ioctl(fd, SIOCGIFHWADDR, &ifr)) == -1) {
         return -1;
     }
+
+    if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+        return -1;
+    }
+
+    *ifindex = ifr.ifr_ifindex;
 
     close(fd);
 

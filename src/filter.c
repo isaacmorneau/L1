@@ -1,7 +1,9 @@
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
+#include <stddef.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
 //generate the filter code with the following
 //  sudo tcpdump -dd "udp port 53"
 /*struct sock_filter rawsock_filter[] = {{0x28, 0, 0, 0x0000000c}, {0x15, 0, 6, 0x000086dd},
@@ -12,3 +14,9 @@
     {0x48, 0, 0, 0x0000000e}, {0x15, 2, 0, 0x00000035}, {0x48, 0, 0, 0x00000010},
     {0x15, 0, 1, 0x00000035}, {0x6, 0, 0, 0x00040000}, {0x6, 0, 0, 0x00000000}};
     */
+
+void* intercept(void* param) {
+    //
+
+    return NULL;
+}

@@ -17,7 +17,6 @@ static void print_help() {
          "\t[P]snmac - the MAC of the target to poison [disables auto discovery]\n"
          "\t[g]ateip - the IP of the gateway, will default to local routing lookup\n"
          "\t[G]atemac - the MAC of the gateway [disables auto discovery]\n"
-         "\t[l]ocalmac - the MAC of this device, will default to local routing lookup [disables "
          "auto discovery]\n"
          "\n==>injection<==\n"
          "\t*[i]nterface - the interface to use\n"
@@ -40,6 +39,7 @@ int main(int argc, char **argv) {
     char *gateip = NULL;
     char *psnip  = NULL;
     char *iface  = NULL;
+    int ifindex = 0;
 
     uint32_t pip;
     uint32_t uip;
@@ -47,8 +47,7 @@ int main(int argc, char **argv) {
     uint32_t gip;
 
     //extra bit is a flag for if its been set or not
-    uint8_t umac[7];
-    umac[6] = 0;
+    uint8_t umac[6];
     uint8_t pmac[7];
     pmac[6] = 0;
     uint8_t gmac[7];
@@ -65,14 +64,13 @@ int main(int argc, char **argv) {
                 {"psnmac",    required_argument, 0, 'P'},
                 {"gateip",    required_argument, 0, 'g'},
                 {"gatemac",   required_argument, 0, 'G'},
-                {"localmac",  required_argument, 0, 'l'},
                 {"interface", required_argument, 0, 'i'},
                 {"dstip",     required_argument, 0, 'd'},
                 {"help",      no_argument,       0, 'h'},
                 {0, 0, 0, 0}
             };
 
-        choice = getopt_long(argc, argv, "p:P:g:G:l:i:d:h", long_options, &option_index);
+        choice = getopt_long(argc, argv, "p:P:g:G:i:d:h", long_options, &option_index);
 
         if (choice == -1) {
             break;
@@ -84,13 +82,6 @@ int main(int argc, char **argv) {
                 return EXIT_SUCCESS;
             case 'i':
                 iface = optarg;
-                break;
-            case 'l':
-                if (read_mac_str(optarg, umac)) {
-                    fputs("failed to read in local MAC\n", stderr);
-                    return EXIT_FAILURE;
-                }
-                umac[6] = 1;
                 break;
             case 'g':
                 gateip = optarg;
@@ -131,6 +122,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+
     if (resolve_ip(psnip, &pip)) {
         fputs("unable to resolve poison IP\n", stderr);
         return EXIT_FAILURE;
@@ -153,7 +145,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!umac[6] && resolve_local_mac(iface, umac)) {
+    if (resolve_local_mac(iface, umac, &ifindex)) {
         fputs("unable to resolve local MAC\n", stderr);
         return EXIT_FAILURE;
     }
