@@ -72,25 +72,28 @@ int resolve_local_mac(const char* iface, uint8_t mac[6], int* ifindex) {
     }
 
     if ((ioctl(fd, SIOCGIFHWADDR, &ifr)) == -1) {
+        close(fd);
         return -1;
     }
 
+    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+
     if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+        close(fd);
         return -1;
     }
 
     *ifindex = ifr.ifr_ifindex;
 
     close(fd);
-
-    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
     return 0;
 }
 
 int resolve_remote_mac(uint32_t addr, uint8_t mac[6]) {
     char buffer[90];
     snprintf(buffer, 90,
-        "export H=\"%u.%u.%u.%u\";ping -nc1 $H 2>&1 >/dev/null;arp -an|grep $H|awk '{print $4}'",
+        "export H=\"%u.%u.%u.%u\";ping -nc1 $H 2>&1 >/dev/null;arp -an|grep \"($H)\"|awk '{print "
+        "$4}'",
         *((uint8_t*)&addr), *((uint8_t*)&addr + 1), *((uint8_t*)&addr + 2), *((uint8_t*)&addr + 3));
     FILE* macfile;
     if (!(macfile = popen(buffer, "r"))) {
@@ -118,26 +121,28 @@ int resolve_gateway(uint32_t* addr) {
     return ret == 4 ? 0 : -1;
 }
 
-int resolve_local_ip(uint8_t mac[6], uint32_t* addr) {
-    char buffer[104];
-    uint8_t ip[4];
-    FILE* ipfile;
-    int ret;
+int resolve_local_ip(const char* iface, uint32_t* addr) {
+    int fd;
+    struct ifreq ifr;
 
-    snprintf(buffer, 104,
-        "ip addr|grep -iA1 \"%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\"|tail -1|awk '{print "
-        "$2}'|grep -Eo '^[^/]*'",
-        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    if (!(ipfile = popen(buffer, "r"))) {
-        perror("popen");
+    if ((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1) {
+        perror("socket");
         return -1;
     }
-    ret = fscanf(ipfile, "%hhu.%hhu.%hhu.%hhu", ip, ip + 1, ip + 2, ip + 3);
 
-    pclose(ipfile);
+    ifr.ifr_addr.sa_family = AF_INET;
 
-    *addr = *ip | ip[1] << 8 | ip[2] << 16 | ip[3] << 24;
+    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
 
-    return ret == 4 ? 0 : -1;
+    if (ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
+        perror("ioctl");
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+
+    *addr = ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+
+    return 0;
 }

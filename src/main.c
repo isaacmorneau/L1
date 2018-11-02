@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +21,7 @@ static void print_help() {
          "auto discovery]\n"
          "\n==>injection<==\n"
          "\t*[i]nterface - the interface to use\n"
-         "\t*[d]stip - the host of the crafted dns query, will default to local IP\n"
+         "\t*[d]stip - the host of the crafted dns query\n"
          "one or the other is needed but not both\n"
          "\n==>misc<==\n"
          "\t[h]elp - this message");
@@ -39,19 +40,19 @@ int main(int argc, char **argv) {
     char *gateip = NULL;
     char *psnip  = NULL;
     char *iface  = NULL;
-    int ifindex = 0;
+    int ifindex  = 0;
 
     uint32_t pip;
     uint32_t uip;
     uint32_t dip;
     uint32_t gip;
 
-    //extra bit is a flag for if its been set or not
     uint8_t umac[6];
-    uint8_t pmac[7];
-    pmac[6] = 0;
-    uint8_t gmac[7];
-    gmac[6] = 0;
+    uint8_t pmac[6];
+    uint8_t gmac[6];
+
+    bool pmac_set = 0;
+    bool gmac_set = 0;
 
     if (argc == 1) {
         print_help();
@@ -59,16 +60,10 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        static struct option long_options[] = {
-                {"psnip",     required_argument, 0, 'p'},
-                {"psnmac",    required_argument, 0, 'P'},
-                {"gateip",    required_argument, 0, 'g'},
-                {"gatemac",   required_argument, 0, 'G'},
-                {"interface", required_argument, 0, 'i'},
-                {"dstip",     required_argument, 0, 'd'},
-                {"help",      no_argument,       0, 'h'},
-                {0, 0, 0, 0}
-            };
+        static struct option long_options[] = {{"psnip", required_argument, 0, 'p'},
+            {"psnmac", required_argument, 0, 'P'}, {"gateip", required_argument, 0, 'g'},
+            {"gatemac", required_argument, 0, 'G'}, {"interface", required_argument, 0, 'i'},
+            {"dstip", required_argument, 0, 'd'}, {"help", no_argument, 0, 'h'}, {0, 0, 0, 0}};
 
         choice = getopt_long(argc, argv, "p:P:g:G:i:d:h", long_options, &option_index);
 
@@ -91,7 +86,7 @@ int main(int argc, char **argv) {
                     fputs("failed to read in gateway MAC\n", stderr);
                     return EXIT_FAILURE;
                 }
-                gmac[6] = 1;
+                gmac_set = 1;
                 break;
             case 'p':
                 psnip = optarg;
@@ -101,7 +96,7 @@ int main(int argc, char **argv) {
                     fputs("failed to read in poison MAC\n", stderr);
                     return EXIT_FAILURE;
                 }
-                pmac[6] = 1;
+                pmac_set = 1;
                 break;
             case 'd':
                 dstip = optarg;
@@ -121,7 +116,6 @@ int main(int argc, char **argv) {
         fputs("please specify an interface\n", stderr);
         return EXIT_FAILURE;
     }
-
 
     if (resolve_ip(psnip, &pip)) {
         fputs("unable to resolve poison IP\n", stderr);
@@ -150,17 +144,17 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (resolve_local_ip(umac, &uip)) {
+    if (resolve_local_ip(iface, &uip)) {
         fputs("unable to resolve local IP\n", stderr);
         return EXIT_FAILURE;
     }
 
-    if (!pmac[6] && resolve_remote_mac(pip, pmac)) {
+    if (!pmac_set && resolve_remote_mac(pip, pmac)) {
         fputs("unable to resolve remote MAC\n", stderr);
         return EXIT_FAILURE;
     }
 
-    if (!gmac[6] && resolve_remote_mac(gip, gmac)) {
+    if (!gmac_set && resolve_remote_mac(gip, gmac)) {
         fputs("unable to resolve gateway MAC\n", stderr);
         return EXIT_FAILURE;
     }
@@ -182,9 +176,10 @@ int main(int argc, char **argv) {
 
     puts("==-starting poison-==");
     targets_t tg;
-    tg.sock = peep_sock(iface);
-    tg.gip  = gip;
-    tg.cip  = pip;
+    tg.sock    = peep_sock(iface);
+    tg.gip     = gip;
+    tg.cip     = pip;
+    tg.ifindex = ifindex;
     memcpy(tg.omac, umac, 6);
     memcpy(tg.cmac, pmac, 6);
     memcpy(tg.gmac, gmac, 6);
