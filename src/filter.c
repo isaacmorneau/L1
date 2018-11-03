@@ -1,15 +1,29 @@
+#define _DEFAULT_SOURCE
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <limits.h>
 #include <linux/filter.h>
+#include <linux/if.h>
 #include <linux/if_ether.h>
+#include <linux/if_packet.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
+#include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <netdb.h>
+#include <netinet/ether.h>
+#include <netinet/if_ether.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/param.h>
+#include <sys/raw.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -39,43 +53,47 @@ int set_filter(int sock) {
 }
 
 void* intercept(void* targets) {
-    static uint8_t buffer[USHRT_MAX];
-    memset(buffer, '~', USHRT_MAX-1);
-    static dns_hdr_t* dnshdr = (dns_hdr_t*)buffer;
+    static uint8_t buffer[4096];
+    struct ether_header* ehdr = (struct ether_header*)buffer;
+    struct iphdr* ihdr        = (struct iphdr*)(ehdr + 1);
+    struct udphdr* uhdr       = (struct udphdr*)(ihdr + 1);
+    struct dnshdr* dhdr       = (struct dnshdr*)(uhdr + 1);
+
     int nread;
     //copy it local
     targets_t t = *(targets_t*)targets;
 
     set_filter(t.sock);
 
-    while ((nread = read(t.sock, buffer, USHRT_MAX)) != -1) {
-        if ((unsigned long)nread < sizeof(dns_hdr_t)) {
+    while ((nread = read(t.sock, buffer, 4096)) != -1) {
+        if ((unsigned long)nread < (sizeof(struct ether_header) + sizeof(struct iphdr)
+                                       + sizeof(struct udphdr) + sizeof(struct dnshdr))) {
             //must be malformed, its smaller than the header
             continue;
         }
-        printf("id: %hX\n", dnshdr->id);
-        printf("rec: %c\n", dnshdr->rd ? 'y' : 'n');
-        printf("truc: %c\n", dnshdr->tc ? 'y' : 'n');
-        printf("auth: %c\n", dnshdr->aa ? 'y' : 'n');
-        printf("op: %c\n", dnshdr->opcode);
-        printf("qr: %c\n", dnshdr->qr ? 'y' : 'n');
-        printf("rcode: %c\n", dnshdr->rcode);
-        printf("check: %c\n", dnshdr->cd ? 'y' : 'n');
-        printf("auth2: %c\n", dnshdr->ad ? 'y' : 'n');
-        printf("z?: %c\n", dnshdr->z ? 'y' : 'n');
-        printf("reca: %c\n", dnshdr->ra ? 'y' : 'n');
-        printf("qcount: %hX\n", dnshdr->q_count);
-        printf("ans: %hX\n", dnshdr->ans_count);
-        printf("auth: %hX\n", dnshdr->auth_count);
-        printf("add: %hX\n", dnshdr->add_count);
+        printf("id:     %hX\n", ntohs(dhdr->id));
+        printf("rec:    %c\n", dhdr->rd ? 'y' : 'n');
+        printf("truc:   %c\n", dhdr->tc ? 'y' : 'n');
+        printf("auth:   %c\n", dhdr->aa ? 'y' : 'n');
+        printf("op:     %d\n", dhdr->opcode);
+        printf("qr:     %c\n", dhdr->qr ? 'y' : 'n');
+        printf("rcode:  %d\n", dhdr->rcode);
+        printf("check:  %c\n", dhdr->cd ? 'y' : 'n');
+        printf("auth2:  %c\n", dhdr->ad ? 'y' : 'n');
+        printf("z?:     %c\n", dhdr->z ? 'y' : 'n');
+        printf("reca:   %c\n", dhdr->ra ? 'y' : 'n');
+        printf("qcount: %hX\n", ntohs(dhdr->q_count));
+        printf("ans:    %hX\n", ntohs(dhdr->ans_count));
+        printf("auth:   %hX\n", ntohs(dhdr->auth_count));
+        printf("add:    %hX\n", ntohs(dhdr->add_count));
 
-        char* name = (char*)buffer + sizeof(dns_hdr_t);
+        char* name = (char*)(dhdr + 1);
         while (name < buffer + nread) {
             printf("name: %hhu\n", name[0]);
             for (uint8_t i = 0; i < name[0]; ++i) {
-                printf("%02hhX", name[i+1]);
+                printf("%02hhX", name[i + 1]);
             }
-            name += name[0];
+            name += name[0] + 1;
             puts("");
         }
     }

@@ -5,7 +5,7 @@ void* intercept(void* targets);
 
 int set_filter(int sock);
 
-typedef struct __attribute__ ((packed)) {
+struct __attribute__ ((packed)) dnshdr {
     uint16_t id; //identification number
 
     uint8_t rd : 1; //recursion desired
@@ -24,4 +24,4 @@ typedef struct __attribute__ ((packed)) {
     uint16_t ans_count; //number of answer entries
     uint16_t auth_count; //number of authority entries
     uint16_t add_count; //number of resource entries
-} dns_hdr_t;
+};
