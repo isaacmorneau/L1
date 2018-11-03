@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "addr.h"
+#include "filter.h"
 #include "poison.h"
 
 static void print_help() {
@@ -180,15 +181,20 @@ int main(int argc, char **argv) {
     tg.gip     = gip;
     tg.cip     = pip;
     tg.ifindex = ifindex;
+
     memcpy(tg.omac, umac, 6);
     memcpy(tg.cmac, pmac, 6);
     memcpy(tg.gmac, gmac, 6);
 
-    pthread_t td;
+    pthread_t ztd, dtd;
 
-    pthread_create(&td, NULL, zerg_arp, &tg);
+    pthread_create(&ztd, NULL, zerg_arp, &tg);
+    pthread_create(&dtd, NULL, intercept, &tg);
 
     void *ret = NULL;
-    pthread_join(td, &ret);
+
+    pthread_join(ztd, &ret);
+    pthread_join(dtd, &ret);
+
     return EXIT_SUCCESS;
 }
