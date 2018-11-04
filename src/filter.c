@@ -175,7 +175,9 @@ void* intercept(void* targets) {
         uhdr->dest   = uhdr->source;
         uhdr->source = htons(53); //constant is fast than a copy
 
-        dhdr->aa = 1; //of course we are authoritive ^.^
+        //set the flags to the magic numbers for default responses
+        *(uint8_t*)(dhdr + 2) = 0x81;
+        *(uint8_t*)(dhdr + 3) = 0x80;
 
         dhdr->ans_count = htons(1); //constant is fast than a copy
 
