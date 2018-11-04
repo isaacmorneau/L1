@@ -167,6 +167,11 @@ void* intercept(void* targets) {
         ihdr->daddr = ihdr->saddr;
         ihdr->saddr = ip;
 
+        //could inc it, doesnt matter
+        //ihdr->id = htons(ntohs(ihdr->id) + 1);
+        ihdr->tot_len += 16;
+        ihdr->tot_len = htons(ntohs(ihdr->tot_len) + 16);
+
         //recalculatet ip checksum
         ihdr->check = 0;
         ihdr->check = csum((const uint16_t*)ihdr, sizeof(struct iphdr));
@@ -205,7 +210,7 @@ void* intercept(void* targets) {
         nread += 16;
 
         //final udp cleanup and checksum
-        uhdr->len = htons(nread - sizeof(struct ether_header) + sizeof(struct iphdr));
+        uhdr->len = htons(ntohs(uhdr->len) + 16);
         uhdr->check = 0;
         uhdr->check = check_udp_sum((uint8_t*)uhdr, ntohs(uhdr->len));
 
