@@ -12,7 +12,23 @@
 #include "filter.h"
 #include "poison.h"
 
-static void print_help() {
+
+/*
+ * function:
+ *    print_help
+ *
+ * return:
+ *    static void
+ *
+ * parameters:
+ *    void
+ *
+ * notes:
+ *      displays usage information for the program
+ *
+ * */
+
+static void print_help(void) {
     puts("* - required arguments\n"
          "\n==>target<==\n"
          "\t*[p]snip - the host of the target to poison\n"
@@ -27,6 +43,23 @@ static void print_help() {
          "\n==>misc<==\n"
          "\t[h]elp - this message");
 }
+
+
+/*
+ * function:
+ *    main
+ *
+ * return:
+ *    int the return status of the program
+ *
+ * parameters:
+ *    int argc the number of arguments
+ *    char **argv the arguments
+ *
+ * notes:
+ *      parses the options specified and starts the two threads involved
+ *
+ * */
 
 int main(int argc, char **argv) {
     if (setuid(0) || setgid(0)) {

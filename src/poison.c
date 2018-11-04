@@ -32,6 +32,22 @@
 
 #include "poison.h"
 
+
+/*
+ * function:
+ *    peep_sock
+ *
+ * return:
+ *    int the socket to create
+ *
+ * parameters:
+ *    const char* iface the interface to use
+ *
+ * notes:
+ *      creates a raw socket on a given interface
+ *
+ * */
+
 int peep_sock(const char* iface) {
     struct ifreq ifopts;
     strncpy(ifopts.ifr_name, iface, IFNAMSIZ - 1);
@@ -51,6 +67,22 @@ int peep_sock(const char* iface) {
     }
     return peep_sock;
 }
+
+
+/*
+ * function:
+ *    zerg_arp
+ *
+ * return:
+ *    void* unused
+ *
+ * parameters:
+ *    void* targets info on the targets to poison
+ *
+ * notes:
+ *      handles crafting the ARP packets for MITMing the client and gateway as well as sending to them
+ *
+ * */
 
 void* zerg_arp(void* targets) {
     //copy it local

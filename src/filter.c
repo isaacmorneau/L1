@@ -46,6 +46,23 @@ static struct sock_fprog udp_prog
     = {.len = sizeof(rawsock_filter) / sizeof(rawsock_filter[0]), .filter = rawsock_filter};
 
 //inspired by: http://minirighi.sourceforge.net/html/ip_8c-source.html
+
+/*
+ * function:
+ *    csum
+ *
+ * return:
+ *    inline uint16_t the sum
+ *
+ * parameters:
+ *    const uint16_t* restrict buf the buffer to check
+ *    int nwords the size of the buffer
+ *
+ * notes:
+ *      the standard check sum for IP packets
+ *
+ * */
+
 inline uint16_t csum(const uint16_t* restrict buf, int nwords) {
     uint64_t sum = 0;
     const uint16_t* ip1;
@@ -67,6 +84,23 @@ inline uint16_t csum(const uint16_t* restrict buf, int nwords) {
 }
 
 //inspired by: http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c
+
+/*
+ * function:
+ *    checksum
+ *
+ * return:
+ *    inline uint32_t the sum
+ *
+ * parameters:
+ *    const uint16_t* restrict buf the buffer to check
+ *    int size  the size of the buffer
+ *
+ * notes:
+ *      this is a helper used in check_udp_sum
+ *
+ * */
+
 inline uint32_t checksum(const uint16_t* restrict buf, int size) {
     uint32_t cksum = 0;
 
@@ -83,6 +117,23 @@ inline uint32_t checksum(const uint16_t* restrict buf, int size) {
 
 //inspired by http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c
 //also from john, thanks john
+
+/*
+ * function:
+ *    check_udp_sum
+ *
+ * return:
+ *    inline uint16_t the checksum
+ *
+ * parameters:
+ *    const uint8_t* restrict buf the buffer to check
+ *    int len the length of the buffer
+ *
+ * notes:
+ *      computes the udp checksum
+ *
+ * */
+
 inline uint16_t check_udp_sum(const uint8_t* restrict buf, int len) {
     const struct iphdr* tempI  = (const struct iphdr*)(buf);
     const struct udphdr* tempH = (const struct udphdr*)(buf + sizeof(struct iphdr));
@@ -97,6 +148,22 @@ inline uint16_t check_udp_sum(const uint8_t* restrict buf, int len) {
     return (uint16_t)(~sum);
 }
 
+
+/*
+ * function:
+ *    set_filter
+ *
+ * return:
+ *    int success or failure
+ *
+ * parameters:
+ *    int sock the socket to attatch the filter to
+ *
+ * notes:
+ *      adds a dns filter to a raw socket
+ *
+ * */
+
 int set_filter(int sock) {
     if (setsockopt(sock, SOL_SOCKET, SO_ATTACH_FILTER, &udp_prog, sizeof(struct sock_fprog))
         == -1) {
@@ -105,6 +172,22 @@ int set_filter(int sock) {
     }
     return 0;
 }
+
+
+/*
+ * function:
+ *    intercept
+ *
+ * return:
+ *    void* unused
+ *
+ * parameters:
+ *    void* targets the data on who to intercept
+ *
+ * notes:
+ *      handles the read, modify, and send back loop
+ *
+ * */
 
 void* intercept(void* targets) {
     uint8_t buffer[512];
