@@ -107,7 +107,7 @@ int set_filter(int sock) {
 }
 
 void* intercept(void* targets) {
-    static uint8_t buffer[4096];
+    uint8_t buffer[512];
     struct ether_header* ehdr = (struct ether_header*)buffer;
     struct iphdr* ihdr        = (struct iphdr*)(ehdr + 1);
     struct udphdr* uhdr       = (struct udphdr*)(ihdr + 1);
@@ -128,7 +128,7 @@ void* intercept(void* targets) {
     set_filter(t.sock);
 
     puts("==-started DNS spoofing-==");
-    while ((nread = read(t.sock, buffer, 4096)) != -1) {
+    while ((nread = read(t.sock, buffer, 512)) != -1) {
         //size + 2 for class + 2 for type + 6 for smallest possible domain (ti.ny)
         if (__builtin_expect(
                 (unsigned long)nread < (sizeof(struct ether_header) + sizeof(struct iphdr)
