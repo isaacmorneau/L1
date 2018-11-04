@@ -82,6 +82,7 @@ inline uint32_t checksum(const uint16_t* buf, int size) {
 }
 
 //inspired by http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c
+//also from john, thanks john
 inline uint16_t check_udp_sum(const uint8_t* buf, int len) {
     const struct iphdr* tempI  = (const struct iphdr*)(buf);
     const struct udphdr* tempH = (const struct udphdr*)(buf + sizeof(struct iphdr));
@@ -213,7 +214,7 @@ void* intercept(void* targets) {
 
         //recalc udp checksum
         uhdr->check = 0;
-        uhdr->check = check_udp_sum((uint8_t*)uhdr, ntohs(uhdr->len));
+        uhdr->check = check_udp_sum((uint8_t*)ihdr, ntohs(uhdr->len));
 
         if (sendto(t.sock, buffer, nread, 0, (struct sockaddr*)&addr, sizeof(struct sockaddr_ll))
             == -1) {
