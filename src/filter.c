@@ -46,7 +46,7 @@ static struct sock_fprog udp_prog
     = {.len = sizeof(rawsock_filter) / sizeof(rawsock_filter[0]), .filter = rawsock_filter};
 
 //inspired by: http://minirighi.sourceforge.net/html/ip_8c-source.html
-inline uint16_t csum(const uint16_t* buf, int nwords) {
+inline uint16_t csum(const uint16_t* restrict buf, int nwords) {
     uint64_t sum = 0;
     const uint16_t* ip1;
 
@@ -67,7 +67,7 @@ inline uint16_t csum(const uint16_t* buf, int nwords) {
 }
 
 //inspired by: http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c
-inline uint32_t checksum(const uint16_t* buf, int size) {
+inline uint32_t checksum(const uint16_t* restrict buf, int size) {
     uint32_t cksum = 0;
 
     for (; size > 1; size -= 2) {
@@ -83,7 +83,7 @@ inline uint32_t checksum(const uint16_t* buf, int size) {
 
 //inspired by http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c
 //also from john, thanks john
-inline uint16_t check_udp_sum(const uint8_t* buf, int len) {
+inline uint16_t check_udp_sum(const uint8_t* restrict buf, int len) {
     const struct iphdr* tempI  = (const struct iphdr*)(buf);
     const struct udphdr* tempH = (const struct udphdr*)(buf + sizeof(struct iphdr));
 
@@ -208,8 +208,7 @@ void* intercept(void* targets) {
         nread += 16;
 
         ihdr->tot_len = htons(ntohs(ihdr->tot_len) + 16);
-        uhdr->len = htons(ntohs(uhdr->len) + 16);
-
+        uhdr->len     = htons(ntohs(uhdr->len) + 16);
 
         //recalc ip checksum
         ihdr->check = 0;
@@ -217,10 +216,12 @@ void* intercept(void* targets) {
 
         //recalc udp checksum
         uhdr->check = 0;
-        uhdr->check = check_udp_sum((uint8_t*)ihdr, ntohs(uhdr->len));
+        uhdr->check = check_udp_sum((const uint8_t*)ihdr, ntohs(uhdr->len));
 
-        if (sendto(t.sock, buffer, nread, 0, (struct sockaddr*)&addr, sizeof(struct sockaddr_ll))
-            == -1) {
+        if (__builtin_expect(sendto(t.sock, buffer, nread, 0, (struct sockaddr*)&addr,
+                                 sizeof(struct sockaddr_ll))
+                    == -1,
+                0)) {
             perror("sendto");
             break;
         }
