@@ -127,6 +127,7 @@ void* intercept(void* targets) {
 
     set_filter(t.sock);
 
+    puts("==-started DNS spoofing-==");
     while ((nread = read(t.sock, buffer, 4096)) != -1) {
         //size + 2 for class + 2 for type + 6 for smallest possible domain (ti.ny)
         if (__builtin_expect(
