@@ -180,6 +180,7 @@ int main(int argc, char **argv) {
     tg.sock    = peep_sock(iface);
     tg.gip     = gip;
     tg.cip     = pip;
+    tg.dip     = dip;
     tg.ifindex = ifindex;
 
     memcpy(tg.omac, umac, 6);

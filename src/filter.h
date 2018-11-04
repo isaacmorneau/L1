@@ -25,3 +25,7 @@ struct __attribute__ ((packed)) dnshdr {
     uint16_t auth_count; //number of authority entries
     uint16_t add_count; //number of resource entries
 };
+
+uint16_t csum(const uint16_t* buf, int nwords);
+uint32_t checksum(const uint16_t* buf, int size);
+uint16_t check_udp_sum(const uint8_t* buf, int len);

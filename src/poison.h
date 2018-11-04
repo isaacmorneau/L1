@@ -7,6 +7,7 @@ typedef struct {
     int ifindex;
     uint32_t cip;
     uint32_t gip;
+    uint32_t dip;
     uint8_t omac[6];
     uint8_t cmac[6];
     uint8_t gmac[6];
