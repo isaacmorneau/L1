@@ -175,7 +175,6 @@ int main(int argc, char **argv) {
     print_ip(gip);
     print_mac(gmac);
 
-    puts("==-starting poison-==");
     targets_t tg;
     tg.sock    = peep_sock(iface);
     tg.gip     = gip;
