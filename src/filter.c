@@ -173,13 +173,13 @@ void* intercept(void* targets) {
 
         //swap the ports
         uhdr->dest   = uhdr->source;
-        uhdr->source = htons(53); //constant is fast than a copy
+        uhdr->source = htons(53); //constant is faster than a copy
 
         //set the flags to the magic numbers for default responses
-        *(uint8_t*)(dhdr + 2) = 0x81;
-        *(uint8_t*)(dhdr + 3) = 0x80;
+        ((uint8_t*)dhdr)[2] = 0x81;
+        ((uint8_t*)dhdr)[3] = 0x80;
 
-        dhdr->ans_count = htons(1); //constant is fast than a copy
+        dhdr->ans_count = htons(1); //constant is faster than a copy
 
         //compressed
         offset[0] = 0xc0;
