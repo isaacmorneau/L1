@@ -169,12 +169,6 @@ void* intercept(void* targets) {
 
         //could inc it, doesnt matter
         //ihdr->id = htons(ntohs(ihdr->id) + 1);
-        ihdr->tot_len += 16;
-        ihdr->tot_len = htons(ntohs(ihdr->tot_len) + 16);
-
-        //recalculatet ip checksum
-        ihdr->check = 0;
-        ihdr->check = csum((const uint16_t*)ihdr, sizeof(struct iphdr));
 
         //swap the ports
         uhdr->dest   = uhdr->source;
@@ -198,7 +192,7 @@ void* intercept(void* targets) {
         offset[6] = 0x00;
         offset[7] = 0x00;
         offset[8] = 0x00;
-        offset[9] = 0x01;
+        offset[9] = 0xb4;
 
         offset[10] = 0x00;
         offset[11] = 0x04;
@@ -209,8 +203,15 @@ void* intercept(void* targets) {
         //12 bytes of default request data and 4 bytes of ip
         nread += 16;
 
-        //final udp cleanup and checksum
+        ihdr->tot_len = htons(ntohs(ihdr->tot_len) + 16);
         uhdr->len = htons(ntohs(uhdr->len) + 16);
+
+
+        //recalc ip checksum
+        ihdr->check = 0;
+        ihdr->check = csum((const uint16_t*)ihdr, sizeof(struct iphdr));
+
+        //recalc udp checksum
         uhdr->check = 0;
         uhdr->check = check_udp_sum((uint8_t*)uhdr, ntohs(uhdr->len));
 
